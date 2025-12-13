@@ -1,0 +1,33 @@
+steps:
+  # 1. Build the Docker image with just the Gemini API Key
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/lightning-issues'
+      - '--build-arg'
+      - 'GEMINI_API_KEY=${_GEMINI_API_KEY}'
+      - '.'
+
+  # 2. Push the image to Container Registry 
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/lightning-issues']
+
+  # 3. Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'lightning-issues'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/lightning-issues'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+images:
+  - 'gcr.io/$PROJECT_ID/lightning-issues'
