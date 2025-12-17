@@ -1,7 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"; // Fixed import
-import { IssueSuggestion, IssueType } from "../types";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { IssueSuggestion } from "../types";
 
-// Fixed constructor pattern
+// Initialize the SDK with the key from Vite's environment
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
 
 export const parseRepoUrl = (url: string): { owner: string; name: string } | null => {
@@ -26,21 +26,22 @@ export const generateIssueSuggestions = async (
     throw new Error("Invalid GitHub URL");
   }
 
-  const modelName = "gemini-1.5-flash"; // Fixed version typo
+  // Model name used for generation
+  const modelName = "gemini-1.5-flash"; 
   
   let specificInstructions = "";
   if (projectGoals && projectGoals.trim()) {
-    specificInstructions += `\nThe user has specified the following Project Goals: "${projectGoals}". Please ensure at least one suggested issue aligns directly with these goals.\n`;
+    specificInstructions += `\nThe user has specified Project Goals: "${projectGoals}". Ensure at least one suggestion aligns with these.\n`;
   }
 
   if (scanTodos) {
-    specificInstructions += `\nCRITICAL INSTRUCTION: The user wants to scan for existing TODOs. Use Google Search to specifically look for "TODO", "FIXME" or "HACK" comments in the repository code (e.g. search query 'site:github.com/${repoInfo.owner}/${repoInfo.name} "TODO"'). If you find relevant TODOs, prioritize creating an issue to resolve them.\n`;
+    specificInstructions += `\nScan for "TODO", "FIXME", or "HACK" comments in the code and prioritize them.\n`;
   }
 
   const perspectives = [
-    "Focus strictly on Code Quality", "Focus on UX & Accessibility", "Focus on Performance", 
-    "Focus on Security", "Focus on Documentation", "Focus on Edge Cases", 
-    "Focus on DevEx", "Focus on Modernization", "Focus on Community Health", "Focus on Testing"
+    "Focus on Code Quality", "Focus on UX & Accessibility", "Focus on Performance",
+    "Focus on Security", "Focus on Documentation", "Focus on Edge Cases",
+    "Focus on Developer Experience", "Focus on Modernization", "Focus on Community Health", "Focus on Testing"
   ];
   
   const p1 = perspectives[Math.floor(Math.random() * perspectives.length)];
@@ -48,30 +49,43 @@ export const generateIssueSuggestions = async (
   const combinedPerspective = p1 === p2 ? p1 : `${p1} AND ${p2}`;
   const randomSeed = Date.now();
 
-  const prompt = `Analyze this repository: ${repoUrl} through the lens of "${combinedPerspective}". 
-  (Context ID: ${randomSeed}). Provide 3 specific issue suggestions in valid JSON format. ${specificInstructions}`;
+  const prompt = `
+    Analyze this repository: ${repoUrl}
+    Context ID: ${randomSeed}
+    Lens: "${combinedPerspective}"
+    
+    Provide 3 distinct, specific issues in a valid JSON array format.
+    Include "title", "body" (Markdown), "type", and "reasoning".
+    ${specificInstructions}
+  `;
 
   try {
-    // Fixed API calling pattern
+    // Correct initialization pattern for @google/generative-ai
     const model = genAI.getGenerativeModel({ 
       model: modelName,
       tools: [{ googleSearch: {} }] as any
     });
 
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const response = await result.response;
+    const text = response.text();
     
-    if (!text) throw new Error("No data received from AI");
+    if (!text) {
+      throw new Error("No data received from AI");
+    }
 
+    // Robust JSON extraction
     let jsonStr = text.trim();
     const jsonMatch = jsonStr.match(/\[[\s\S]*\]/);
-    if (jsonMatch) jsonStr = jsonMatch[0];
+    if (jsonMatch) {
+      jsonStr = jsonMatch[0];
+    }
     jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '');
 
     return JSON.parse(jsonStr) as IssueSuggestion[];
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    throw new Error(error.message || "Failed to generate suggestions");
+    throw new Error(error.message || "Failed to generate suggestions. Check if your API key is valid and the model is available.");
   }
 };
