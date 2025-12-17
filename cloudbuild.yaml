@@ -5,7 +5,7 @@ steps:
       - '-c'
       - |
         docker build \
-          --build-arg VITE_GEMINI_API_KEY=$_GEMINI_KEY \
+          --build-arg VITE_GEMINI_API_KEY=${_GEMINI_KEY} \
           -t gcr.io/$PROJECT_ID/lightning-issues .
 images:
   - 'gcr.io/$PROJECT_ID/lightning-issues'
