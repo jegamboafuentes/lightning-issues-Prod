@@ -86,6 +86,6 @@ export const generateIssueSuggestions = async (
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    throw new Error(error.message || "Failed to generate suggestions. Check if your API key is valid and the model is available.");
+    throw new Error(error.message || "Failed to generate suggestions.");
   }
 };
